@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import Link from 'next/link'
+import Nav from '@/components/Nav'
 
 type Folder = {
   id: string
@@ -34,14 +34,7 @@ export default function FoldersPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <span className="text-xl font-bold">Project J</span>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link href="/closet" className="hover:text-black">Closet</Link>
-          <Link href="/folders" className="font-medium text-black">Folders</Link>
-          <Link href="/dashboard" className="hover:text-black">Dashboard</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-5xl mx-auto px-8 py-10">
         <div className="flex items-center justify-between mb-8">
@@ -77,7 +70,6 @@ export default function FoldersPage() {
             </div>
           ))}
 
-          {/* Empty state */}
           {folders.length === 0 && (
             <div className="col-span-3 text-center py-20 text-gray-400">
               <p className="text-4xl mb-3">📁</p>

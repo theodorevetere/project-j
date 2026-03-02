@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Nav from '@/components/Nav'
 import { runFitEngine, BodyProfile, ProductInfo } from '@/lib/fitEngine'
 
 const DEMO_PRODUCT: ProductInfo = {
@@ -58,14 +59,7 @@ export default function FitResultPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <span className="text-xl font-bold">Project J</span>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link href="/profile" className="hover:text-black">My Profile</Link>
-          <Link href="/closet" className="hover:text-black">Closet</Link>
-          <Link href="/dashboard" className="hover:text-black">Dashboard</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-2xl mx-auto px-8 py-10">
         <div className="mb-6">
@@ -142,6 +136,15 @@ export default function FitResultPage() {
                 </ul>
               </div>
             )}
+
+            {/* Save to Closet */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <h2 className="font-semibold mb-2">Like what you see?</h2>
+              <p className="text-gray-500 text-sm mb-4">Save this item to your closet as "Considering"</p>
+              <button className="w-full bg-black text-white rounded-xl py-2.5 text-sm font-medium hover:bg-gray-800 transition">
+                + Save to Closet
+              </button>
+            </div>
 
             <Link href="/profile"
               className="block text-center border border-gray-200 rounded-2xl py-3 text-sm text-gray-500 hover:bg-gray-50 transition">

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import Link from 'next/link'
+import Nav from '@/components/Nav'
 
 const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Dresses', 'Shoes', 'Bags', 'Accessories', 'Outerwear']
 const STATUSES = ['All', 'Owned', 'Considering', 'Wishlist']
@@ -61,14 +61,7 @@ export default function ClosetPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <span className="text-xl font-bold">Project J</span>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link href="/closet" className="font-medium text-black">Closet</Link>
-          <Link href="/folders" className="hover:text-black">Folders</Link>
-          <Link href="/dashboard" className="hover:text-black">Dashboard</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-6xl mx-auto px-8 py-10">
         <div className="flex items-center justify-between mb-8">

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
-import Link from 'next/link'
+import Nav from '@/components/Nav'
 
 type ClosetItem = {
   id: string
@@ -71,14 +71,7 @@ export default function OutfitBuilderPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <span className="text-xl font-bold">Project J</span>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link href="/closet" className="hover:text-black">Closet</Link>
-          <Link href="/folders" className="hover:text-black">Folders</Link>
-          <Link href="/dashboard" className="hover:text-black">Dashboard</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-7xl mx-auto px-8 py-8">
         <h1 className="text-3xl font-bold mb-6">Outfit Builder</h1>

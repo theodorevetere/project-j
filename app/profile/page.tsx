@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import Nav from '@/components/Nav'
 
 type BodyProfile = {
   height_ft: string
@@ -49,14 +50,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <span className="text-xl font-bold">Project J</span>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link href="/closet" className="hover:text-black">Closet</Link>
-          <Link href="/folders" className="hover:text-black">Folders</Link>
-          <Link href="/dashboard" className="hover:text-black">Dashboard</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-2xl mx-auto px-8 py-10">
         <div className="mb-8">
