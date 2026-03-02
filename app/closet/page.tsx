@@ -1,9 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Nav from '@/components/Nav'
 
 const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Dresses', 'Shoes', 'Bags', 'Accessories', 'Outerwear']
 const STATUSES = ['All', 'Owned', 'Considering', 'Wishlist']
+
+// Demo user ID until auth is built
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 type Item = {
   id: string
@@ -20,22 +23,45 @@ type Item = {
   }
 }
 
-const SAMPLE_ITEMS: Item[] = [
-  { id: '1', name: 'White Linen Shirt', brand: 'Zara', category: 'Tops', color: 'White', imageUrl: '', tags: ['casual', 'summer'], status: 'Owned' },
-  { id: '2', name: 'High Waist Jeans', brand: "Levi's", category: 'Bottoms', color: 'Blue', imageUrl: '', tags: ['casual', 'everyday'], status: 'Owned' },
-  { id: '3', name: 'Black Blazer', brand: 'H&M', category: 'Outerwear', color: 'Black', imageUrl: '', tags: ['work', 'formal'], status: 'Owned' },
-  { id: '4', name: 'Floral Midi Dress', brand: 'ASOS', category: 'Dresses', color: 'Pink', imageUrl: '', tags: ['summer', 'date night'], status: 'Owned' },
-  { id: '5', name: 'White Sneakers', brand: 'Nike', category: 'Shoes', color: 'White', imageUrl: '', tags: ['casual', 'everyday'], status: 'Owned' },
-  { id: '6', name: 'Gold Hoop Earrings', brand: 'Mejuri', category: 'Accessories', color: 'Gold', imageUrl: '', tags: ['everyday'], status: 'Owned' },
-  { id: '7', name: 'Linen Wrap Dress', brand: 'Reformation', category: 'Dresses', color: 'Beige', imageUrl: '', tags: ['summer', 'date night'], status: 'Considering', fitResult: { suggestedSize: 'S', confidence: 'high' } },
-]
-
 export default function ClosetPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeStatus, setActiveStatus] = useState('All')
   const [showAddModal, setShowAddModal] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '', status: 'Owned' })
-  const [items, setItems] = useState<Item[]>(SAMPLE_ITEMS)
+  const [items, setItems] = useState<Item[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetchItems()
+  }, [])
+
+  const fetchItems = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/closet?userId=${DEMO_USER_ID}`)
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setItems(data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          brand: item.brand || '',
+          category: item.category || '',
+          color: item.color || '',
+          imageUrl: item.image_url || '',
+          tags: item.tags || [],
+          status: item.status || 'Owned',
+          fitResult: item.fit_suggested_size ? {
+            suggestedSize: item.fit_suggested_size,
+            confidence: item.fit_confidence || 'medium',
+          } : undefined,
+        })))
+      }
+    } catch (e) {
+      console.error('Failed to fetch items', e)
+    }
+    setLoading(false)
+  }
 
   const filtered = items.filter(i => {
     const catMatch = activeCategory === 'All' || i.category === activeCategory
@@ -43,20 +69,48 @@ export default function ClosetPage() {
     return catMatch && statusMatch
   })
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newItem.name) return
-    setItems([...items, {
-      id: Date.now().toString(),
-      name: newItem.name,
-      brand: newItem.brand,
-      category: newItem.category,
-      color: newItem.color,
-      imageUrl: newItem.imageUrl,
-      tags: newItem.tags.split(',').map(t => t.trim()).filter(Boolean),
-      status: newItem.status as 'Owned' | 'Considering' | 'Wishlist',
-    }])
+    setSaving(true)
+    try {
+      const res = await fetch('/api/closet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DEMO_USER_ID,
+          name: newItem.name,
+          brand: newItem.brand,
+          category: newItem.category,
+          color: newItem.color,
+          imageUrl: newItem.imageUrl,
+          tags: newItem.tags.split(',').map(t => t.trim()).filter(Boolean),
+          status: newItem.status,
+        }),
+      })
+      const saved = await res.json()
+      if (saved.id) {
+        setItems(prev => [{
+          id: saved.id,
+          name: saved.name,
+          brand: saved.brand || '',
+          category: saved.category || '',
+          color: saved.color || '',
+          imageUrl: saved.image_url || '',
+          tags: saved.tags || [],
+          status: saved.status || 'Owned',
+        }, ...prev])
+      }
+    } catch (e) {
+      console.error('Failed to save item', e)
+    }
+    setSaving(false)
     setShowAddModal(false)
     setNewItem({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '', status: 'Owned' })
+  }
+
+  const handleDelete = async (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id))
+    await fetch(`/api/closet?id=${id}`, { method: 'DELETE' })
   }
 
   return (
@@ -100,49 +154,66 @@ export default function ClosetPage() {
           ))}
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-300 transition">
-              <div className="aspect-square bg-gray-100 flex items-center justify-center relative">
-                {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-4xl">👗</span>
-                )}
-                {item.status !== 'Owned' && (
-                  <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${
-                    item.status === 'Considering' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {item.status}
-                  </span>
-                )}
-                {item.fitResult && (
-                  <span className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                    Size {item.fitResult.suggestedSize}
-                  </span>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="font-medium text-sm truncate">{item.name}</p>
-                <p className="text-gray-400 text-xs">{item.brand}</p>
-                <div className="flex gap-1 mt-2 flex-wrap">
-                  <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.color}</span>
-                  <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.category}</span>
+        {/* Loading */}
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-4xl mb-3">👗</p>
+            <p className="text-sm">Loading your closet...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-4xl mb-3">👗</p>
+            <p className="font-medium">No items yet</p>
+            <p className="text-sm mt-1">Click "+ Add Item" to start building your closet</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filtered.map(item => (
+              <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-300 transition group">
+                <div className="aspect-square bg-gray-100 flex items-center justify-center relative">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">👗</span>
+                  )}
+                  {item.status !== 'Owned' && (
+                    <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                      item.status === 'Considering' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {item.status}
+                    </span>
+                  )}
+                  {item.fitResult && (
+                    <span className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                      Size {item.fitResult.suggestedSize}
+                    </span>
+                  )}
+                  <button onClick={() => handleDelete(item.id)}
+                    className="absolute bottom-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition">
+                    Remove
+                  </button>
                 </div>
-                {item.fitResult && (
-                  <div className="mt-2 flex items-center gap-1">
-                    <span className="text-xs text-gray-400">Fit confidence:</span>
-                    <span className={`text-xs font-medium capitalize ${
-                      item.fitResult.confidence === 'high' ? 'text-green-600' :
-                      item.fitResult.confidence === 'medium' ? 'text-orange-500' : 'text-gray-400'
-                    }`}>{item.fitResult.confidence}</span>
+                <div className="p-3">
+                  <p className="font-medium text-sm truncate">{item.name}</p>
+                  <p className="text-gray-400 text-xs">{item.brand}</p>
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.color}</span>
+                    <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.category}</span>
                   </div>
-                )}
+                  {item.fitResult && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <span className="text-xs text-gray-400">Fit confidence:</span>
+                      <span className={`text-xs font-medium capitalize ${
+                        item.fitResult.confidence === 'high' ? 'text-green-600' :
+                        item.fitResult.confidence === 'medium' ? 'text-orange-500' : 'text-gray-400'
+                      }`}>{item.fitResult.confidence}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Add Item Modal */}
@@ -174,7 +245,10 @@ export default function ClosetPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowAddModal(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleAdd} className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm hover:bg-gray-800 transition">Add Item</button>
+              <button onClick={handleAdd} disabled={saving}
+                className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm hover:bg-gray-800 transition disabled:opacity-50">
+                {saving ? 'Saving...' : 'Add Item'}
+              </button>
             </div>
           </div>
         </div>
