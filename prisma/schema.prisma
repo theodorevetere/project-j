@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  accounts      Account[]
+  sessions      Session[]
+  closetItems   ClosetItem[]
+  outfits       Outfit[]
+  folders       Folder[]
+  modelProfile  ModelProfile?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model ClosetItem {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  brand       String?
+  category    String
+  color       String?
+  size        String?
+  imageUrl    String?
+  tags        String   @default("[]")
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  placements  OutfitItemPlacement[]
+}
+
+model Outfit {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  notes       String?
+  occasion    String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  placements  OutfitItemPlacement[]
+  folders     FolderOutfit[]
+}
+
+model OutfitItemPlacement {
+  id           String  @id @default(cuid())
+  outfitId     String
+  closetItemId String
+  x            Float   @default(0)
+  y            Float   @default(0)
+  scale        Float   @default(1)
+  rotation     Float   @default(0)
+  zIndex       Int     @default(0)
+  outfit       Outfit     @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  closetItem   ClosetItem @relation(fields: [closetItemId], references: [id], onDelete: Cascade)
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  emoji     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outfits   FolderOutfit[]
+}
+
+model FolderOutfit {
+  folderId  String
+  outfitId  String
+  folder    Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  outfit    Outfit @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  @@id([folderId, outfitId])
+}
+
+model ModelProfile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  photoUrl  String?
+  bodyType  String?
+  height    String?
+  skinTone  String?
+  hairColor String?
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SponsoredItem {
+  id           String   @id @default(cuid())
+  brand        String
+  productName  String
+  imageUrl     String?
+  linkUrl      String
+  category     String
+  tags         String   @default("[]")
+  targetTraits String   @default("{}")
+  priorityScore Int     @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  impressions  AdSlotImpression[]
+}
+
+model AdSlotImpression {
+  id              String   @id @default(cuid())
+  sponsoredItemId String?
+  slotType        String
+  userId          String?
+  clicked         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  sponsoredItem   SponsoredItem? @relation(fields: [sponsoredItemId], references: [id])
+}
