@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Dresses', 'Shoes', 'Bags', 'Accessories', 'Outerwear']
+const STATUSES = ['All', 'Owned', 'Considering', 'Wishlist']
 
 type Item = {
   id: string
@@ -12,24 +13,35 @@ type Item = {
   color: string
   imageUrl: string
   tags: string[]
+  status: 'Owned' | 'Considering' | 'Wishlist'
+  fitResult?: {
+    suggestedSize: string
+    confidence: string
+  }
 }
 
 const SAMPLE_ITEMS: Item[] = [
-  { id: '1', name: 'White Linen Shirt', brand: 'Zara', category: 'Tops', color: 'White', imageUrl: '', tags: ['casual', 'summer'] },
-  { id: '2', name: 'High Waist Jeans', brand: 'Levi\'s', category: 'Bottoms', color: 'Blue', imageUrl: '', tags: ['casual', 'everyday'] },
-  { id: '3', name: 'Black Blazer', brand: 'H&M', category: 'Outerwear', color: 'Black', imageUrl: '', tags: ['work', 'formal'] },
-  { id: '4', name: 'Floral Midi Dress', brand: 'ASOS', category: 'Dresses', color: 'Pink', imageUrl: '', tags: ['summer', 'date night'] },
-  { id: '5', name: 'White Sneakers', brand: 'Nike', category: 'Shoes', color: 'White', imageUrl: '', tags: ['casual', 'everyday'] },
-  { id: '6', name: 'Gold Hoop Earrings', brand: 'Mejuri', category: 'Accessories', color: 'Gold', imageUrl: '', tags: ['everyday'] },
+  { id: '1', name: 'White Linen Shirt', brand: 'Zara', category: 'Tops', color: 'White', imageUrl: '', tags: ['casual', 'summer'], status: 'Owned' },
+  { id: '2', name: 'High Waist Jeans', brand: "Levi's", category: 'Bottoms', color: 'Blue', imageUrl: '', tags: ['casual', 'everyday'], status: 'Owned' },
+  { id: '3', name: 'Black Blazer', brand: 'H&M', category: 'Outerwear', color: 'Black', imageUrl: '', tags: ['work', 'formal'], status: 'Owned' },
+  { id: '4', name: 'Floral Midi Dress', brand: 'ASOS', category: 'Dresses', color: 'Pink', imageUrl: '', tags: ['summer', 'date night'], status: 'Owned' },
+  { id: '5', name: 'White Sneakers', brand: 'Nike', category: 'Shoes', color: 'White', imageUrl: '', tags: ['casual', 'everyday'], status: 'Owned' },
+  { id: '6', name: 'Gold Hoop Earrings', brand: 'Mejuri', category: 'Accessories', color: 'Gold', imageUrl: '', tags: ['everyday'], status: 'Owned' },
+  { id: '7', name: 'Linen Wrap Dress', brand: 'Reformation', category: 'Dresses', color: 'Beige', imageUrl: '', tags: ['summer', 'date night'], status: 'Considering', fitResult: { suggestedSize: 'S', confidence: 'high' } },
 ]
 
 export default function ClosetPage() {
   const [activeCategory, setActiveCategory] = useState('All')
+  const [activeStatus, setActiveStatus] = useState('All')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [newItem, setNewItem] = useState({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '' })
+  const [newItem, setNewItem] = useState({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '', status: 'Owned' })
   const [items, setItems] = useState<Item[]>(SAMPLE_ITEMS)
 
-  const filtered = activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory)
+  const filtered = items.filter(i => {
+    const catMatch = activeCategory === 'All' || i.category === activeCategory
+    const statusMatch = activeStatus === 'All' || i.status === activeStatus
+    return catMatch && statusMatch
+  })
 
   const handleAdd = () => {
     if (!newItem.name) return
@@ -41,9 +53,10 @@ export default function ClosetPage() {
       color: newItem.color,
       imageUrl: newItem.imageUrl,
       tags: newItem.tags.split(',').map(t => t.trim()).filter(Boolean),
+      status: newItem.status as 'Owned' | 'Considering' | 'Wishlist',
     }])
     setShowAddModal(false)
-    setNewItem({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '' })
+    setNewItem({ name: '', brand: '', category: 'Tops', color: '', imageUrl: '', tags: '', status: 'Owned' })
   }
 
   return (
@@ -69,7 +82,7 @@ export default function ClosetPage() {
         </div>
 
         {/* Category Filter */}
-        <div className="flex gap-2 mb-8 flex-wrap">
+        <div className="flex gap-2 mb-4 flex-wrap">
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${activeCategory === cat ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400'}`}>
@@ -78,15 +91,43 @@ export default function ClosetPage() {
           ))}
         </div>
 
+        {/* Status Filter */}
+        <div className="flex gap-2 mb-8">
+          {STATUSES.map(status => (
+            <button key={status} onClick={() => setActiveStatus(status)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                activeStatus === status
+                  ? status === 'Considering' ? 'bg-purple-600 text-white'
+                  : status === 'Wishlist' ? 'bg-blue-600 text-white'
+                  : 'bg-gray-900 text-white'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400'
+              }`}>
+              {status}
+            </button>
+          ))}
+        </div>
+
         {/* Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(item => (
             <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-300 transition">
-              <div className="aspect-square bg-gray-100 flex items-center justify-center">
+              <div className="aspect-square bg-gray-100 flex items-center justify-center relative">
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-4xl">👗</span>
+                )}
+                {item.status !== 'Owned' && (
+                  <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                    item.status === 'Considering' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {item.status}
+                  </span>
+                )}
+                {item.fitResult && (
+                  <span className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                    Size {item.fitResult.suggestedSize}
+                  </span>
                 )}
               </div>
               <div className="p-3">
@@ -96,6 +137,15 @@ export default function ClosetPage() {
                   <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.color}</span>
                   <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{item.category}</span>
                 </div>
+                {item.fitResult && (
+                  <div className="mt-2 flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Fit confidence:</span>
+                    <span className={`text-xs font-medium capitalize ${
+                      item.fitResult.confidence === 'high' ? 'text-green-600' :
+                      item.fitResult.confidence === 'medium' ? 'text-orange-500' : 'text-gray-400'
+                    }`}>{item.fitResult.confidence}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -115,6 +165,12 @@ export default function ClosetPage() {
               <select value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black">
                 {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select value={newItem.status} onChange={e => setNewItem({...newItem, status: e.target.value})}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                <option value="Owned">Owned</option>
+                <option value="Considering">Considering</option>
+                <option value="Wishlist">Wishlist</option>
               </select>
               <input placeholder="Color" value={newItem.color} onChange={e => setNewItem({...newItem, color: e.target.value})}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
