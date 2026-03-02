@@ -1,6 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Nav from '@/components/Nav'
+
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 type Folder = {
   id: string
@@ -9,27 +11,64 @@ type Folder = {
   outfitCount: number
 }
 
-const SAMPLE_FOLDERS: Folder[] = [
-  { id: '1', name: 'Nashville Trip', emoji: '🎸', outfitCount: 3 },
-  { id: '2', name: 'Work Outfits', emoji: '💼', outfitCount: 5 },
-  { id: '3', name: 'Date Night', emoji: '✨', outfitCount: 2 },
-]
-
 export default function FoldersPage() {
-  const [folders, setFolders] = useState<Folder[]>(SAMPLE_FOLDERS)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [newFolder, setNewFolder] = useState({ name: '', emoji: '📁' })
 
-  const handleCreate = () => {
+  useEffect(() => {
+    fetchFolders()
+  }, [])
+
+  const fetchFolders = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/folders?userId=${DEMO_USER_ID}`)
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setFolders(data.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          emoji: f.emoji || '📁',
+          outfitCount: 0,
+        })))
+      }
+    } catch (e) {
+      console.error('Failed to fetch folders', e)
+    }
+    setLoading(false)
+  }
+
+  const handleCreate = async () => {
     if (!newFolder.name) return
-    setFolders([...folders, {
-      id: Date.now().toString(),
-      name: newFolder.name,
-      emoji: newFolder.emoji,
-      outfitCount: 0,
-    }])
+    setSaving(true)
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DEMO_USER_ID,
+          name: newFolder.name,
+          emoji: newFolder.emoji,
+        }),
+      })
+      const saved = await res.json()
+      if (saved.id) {
+        setFolders(prev => [{ id: saved.id, name: saved.name, emoji: saved.emoji || '📁', outfitCount: 0 }, ...prev])
+      }
+    } catch (e) {
+      console.error('Failed to create folder', e)
+    }
+    setSaving(false)
     setShowModal(false)
     setNewFolder({ name: '', emoji: '📁' })
+  }
+
+  const handleDelete = async (id: string) => {
+    setFolders(prev => prev.filter(f => f.id !== id))
+    await fetch(`/api/folders?id=${id}`, { method: 'DELETE' })
   }
 
   return (
@@ -53,31 +92,38 @@ export default function FoldersPage() {
         </div>
 
         {/* Folders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {folders.map(folder => (
-            <div key={folder.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-gray-300 transition cursor-pointer">
-              <div className="text-4xl mb-4">{folder.emoji}</div>
-              <h3 className="font-semibold text-lg">{folder.name}</h3>
-              <p className="text-gray-400 text-sm mt-1">{folder.outfitCount} outfits</p>
-              <div className="flex gap-2 mt-4">
-                <button className="text-xs text-gray-400 hover:text-black transition">View</button>
-                <span className="text-gray-200">·</span>
-                <button className="text-xs text-gray-400 hover:text-red-500 transition"
-                  onClick={() => setFolders(folders.filter(f => f.id !== folder.id))}>
-                  Delete
-                </button>
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-4xl mb-3">📁</p>
+            <p className="text-sm">Loading folders...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {folders.map(folder => (
+              <div key={folder.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-gray-300 transition cursor-pointer">
+                <div className="text-4xl mb-4">{folder.emoji}</div>
+                <h3 className="font-semibold text-lg">{folder.name}</h3>
+                <p className="text-gray-400 text-sm mt-1">{folder.outfitCount} outfits</p>
+                <div className="flex gap-2 mt-4">
+                  <button className="text-xs text-gray-400 hover:text-black transition">View</button>
+                  <span className="text-gray-200">·</span>
+                  <button className="text-xs text-gray-400 hover:text-red-500 transition"
+                    onClick={() => handleDelete(folder.id)}>
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {folders.length === 0 && (
-            <div className="col-span-3 text-center py-20 text-gray-400">
-              <p className="text-4xl mb-3">📁</p>
-              <p className="font-medium">No folders yet</p>
-              <p className="text-sm">Create one to start organizing your outfits</p>
-            </div>
-          )}
-        </div>
+            {folders.length === 0 && (
+              <div className="col-span-3 text-center py-20 text-gray-400">
+                <p className="text-4xl mb-3">📁</p>
+                <p className="font-medium">No folders yet</p>
+                <p className="text-sm">Create one to start organizing your outfits</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* New Folder Modal */}
@@ -95,7 +141,10 @@ export default function FoldersPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleCreate} className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm hover:bg-gray-800 transition">Create</button>
+              <button onClick={handleCreate} disabled={saving}
+                className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm hover:bg-gray-800 transition disabled:opacity-50">
+                {saving ? 'Creating...' : 'Create'}
+              </button>
             </div>
           </div>
         </div>
