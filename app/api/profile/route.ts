@@ -37,11 +37,13 @@ export async function POST(request: NextRequest) {
       hips,
       thigh,
       inseam,
-      updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Profile save error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   return NextResponse.json(data)
 }
