@@ -7,16 +7,21 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }
+
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: CORS })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { userId, product } = body
 
     if (!userId || !product) {
-      return NextResponse.json({ error: 'Missing userId or product' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing userId or product' }, { status: 400, headers: CORS })
     }
 
-    // Fetch user's body profile from Supabase
     const { data: profile, error } = await supabase
       .from('body_profiles')
       .select('*')
@@ -24,7 +29,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error || !profile) {
-      return NextResponse.json({ error: 'No body profile found for this user' }, { status: 404 })
+      return NextResponse.json({ error: 'No body profile found for this user' }, { status: 404, headers: CORS })
     }
 
     const bodyProfile = {
@@ -37,7 +42,6 @@ export async function POST(request: NextRequest) {
       inseam: profile.inseam,
     }
 
-    // Run fit engine
     const result = runFitEngine(bodyProfile, {
       name: product.name,
       category: product.category || 'dress',
@@ -48,14 +52,13 @@ export async function POST(request: NextRequest) {
       modelSize: product.modelSize,
     })
 
-    return NextResponse.json({
-      ...result,
-      product: product.name,
-      brand: product.brand,
-    })
+    return NextResponse.json(
+      { ...result, product: product.name, brand: product.brand },
+      { headers: CORS }
+    )
 
   } catch (err) {
     console.error('Fit API error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500, headers: CORS })
   }
 }
