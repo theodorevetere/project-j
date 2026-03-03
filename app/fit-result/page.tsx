@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Nav from '@/components/Nav'
 import { runFitEngine, BodyProfile, ProductInfo } from '@/lib/fitEngine'
 
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
+
 const DEMO_PRODUCT: ProductInfo = {
   name: 'Linen Wrap Dress',
   category: 'dress',
@@ -38,8 +40,37 @@ const confidenceColor = (c: string) => {
 export default function FitResultPage() {
   const [result, setResult] = useState<ReturnType<typeof runFitEngine> | null>(null)
   const [profile, setProfile] = useState<BodyProfile | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const loadProfile = async () => {
+    // Try Supabase first
+    try {
+      const res = await fetch(`/api/profile?userId=${DEMO_USER_ID}`)
+      const data = await res.json()
+      if (data && data.height_inches) {
+        const body: BodyProfile = {
+          height: data.height_inches,
+          weight: data.weight_lbs,
+          bust: data.bust,
+          waist: data.waist,
+          hips: data.hips,
+          thigh: data.thigh,
+          inseam: data.inseam,
+        }
+        setProfile(body)
+        setResult(runFitEngine(body, DEMO_PRODUCT))
+        return
+      }
+    } catch (e) {
+      console.error('Supabase profile fetch failed, trying localStorage', e)
+    }
+
+    // Fallback to localStorage
     const saved = localStorage.getItem('bodyProfile')
     if (saved) {
       const p = JSON.parse(saved)
@@ -55,7 +86,35 @@ export default function FitResultPage() {
       setProfile(body)
       setResult(runFitEngine(body, DEMO_PRODUCT))
     }
-  }, [])
+  }
+
+  const handleSaveToCloset = async () => {
+    if (!result) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/closet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DEMO_USER_ID,
+          name: DEMO_PRODUCT.name,
+          brand: 'Reformation',
+          category: 'Dresses',
+          color: 'Beige',
+          status: 'Considering',
+          fitSuggestedSize: result.suggestedSize,
+          fitConfidence: result.confidence,
+        }),
+      })
+      const data = await res.json()
+      if (data.id) {
+        setSaved(true)
+      }
+    } catch (e) {
+      console.error('Failed to save to closet', e)
+    }
+    setSaving(false)
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -141,9 +200,19 @@ export default function FitResultPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <h2 className="font-semibold mb-2">Like what you see?</h2>
               <p className="text-gray-500 text-sm mb-4">Save this item to your closet as "Considering"</p>
-              <button className="w-full bg-black text-white rounded-xl py-2.5 text-sm font-medium hover:bg-gray-800 transition">
-                + Save to Closet
-              </button>
+              {saved ? (
+                <div className="w-full bg-green-50 border border-green-200 rounded-xl py-2.5 text-sm font-medium text-green-700 text-center">
+                  ✓ Saved to Closet!
+                  <Link href="/closet" className="ml-2 underline">View Closet →</Link>
+                </div>
+              ) : (
+                <button
+                  onClick={handleSaveToCloset}
+                  disabled={saving}
+                  className="w-full bg-black text-white rounded-xl py-2.5 text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50">
+                  {saving ? 'Saving...' : '+ Save to Closet'}
+                </button>
+              )}
             </div>
 
             <Link href="/profile"

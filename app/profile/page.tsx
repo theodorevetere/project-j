@@ -1,7 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 type BodyProfile = {
   height_ft: string
@@ -20,14 +22,70 @@ export default function ProfilePage() {
     bust: '', waist: '', hips: '', thigh: '', inseam: ''
   })
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
+  const fetchProfile = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/profile?userId=${DEMO_USER_ID}`)
+      const data = await res.json()
+      if (data && data.height_inches) {
+        const ft = Math.floor(data.height_inches / 12)
+        const inches = data.height_inches % 12
+        setProfile({
+          height_ft: ft.toString(),
+          height_in: inches.toString(),
+          weight: data.weight_lbs?.toString() || '',
+          bust: data.bust?.toString() || '',
+          waist: data.waist?.toString() || '',
+          hips: data.hips?.toString() || '',
+          thigh: data.thigh?.toString() || '',
+          inseam: data.inseam?.toString() || '',
+        })
+      }
+    } catch (e) {
+      console.error('Failed to fetch profile', e)
+    }
+    setLoading(false)
+  }
 
   const update = (field: keyof BodyProfile, value: string) =>
     setProfile(prev => ({ ...prev, [field]: value }))
 
-  const handleSave = () => {
-    localStorage.setItem('bodyProfile', JSON.stringify(profile))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const heightInches = parseInt(profile.height_ft || '0') * 12 + parseInt(profile.height_in || '0')
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DEMO_USER_ID,
+          heightInches,
+          weightLbs: parseFloat(profile.weight),
+          bust: parseFloat(profile.bust),
+          waist: parseFloat(profile.waist),
+          hips: parseFloat(profile.hips),
+          thigh: parseFloat(profile.thigh),
+          inseam: parseFloat(profile.inseam),
+        }),
+      })
+      const data = await res.json()
+      if (data.id || data.user_id) {
+        // Also save to localStorage for fit-result page to use
+        localStorage.setItem('bodyProfile', JSON.stringify(profile))
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (e) {
+      console.error('Failed to save profile', e)
+    }
+    setSaving(false)
   }
 
   const InputField = ({ label, field, placeholder, unit }: {
@@ -59,7 +117,10 @@ export default function ProfilePage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-8">
-          <h2 className="font-semibold text-lg mb-6">Measurements</h2>
+          <h2 className="font-semibold text-lg mb-6">
+            Measurements
+            {loading && <span className="text-sm font-normal text-gray-400 ml-2">Loading...</span>}
+          </h2>
 
           {/* Height */}
           <div className="mb-6">
@@ -101,9 +162,13 @@ export default function ProfilePage() {
             </ul>
           </div>
 
-          <button onClick={handleSave}
-            className={`w-full py-3 rounded-xl text-sm font-medium transition ${saved ? 'bg-green-500 text-white' : 'bg-black text-white hover:bg-gray-800'}`}>
-            {saved ? '✓ Profile Saved!' : 'Save Profile'}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`w-full py-3 rounded-xl text-sm font-medium transition ${
+              saved ? 'bg-green-500 text-white' : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50'
+            }`}>
+            {saved ? '✓ Profile Saved!' : saving ? 'Saving...' : 'Save Profile'}
           </button>
         </div>
 
